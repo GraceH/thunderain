@@ -51,5 +51,19 @@ object PrimitiveObjInspectorFactory {
       }
     })
   }
+
+  def stringObjConversion(strObj: String, primitiveType: String) = {
+    primitiveType match {
+      case "Int" => strObj.toInt
+      case "Float"  => strObj.toFloat
+      case "Long" => strObj.toLong
+      case "Double" => strObj.toDouble
+      case "Boolean" => strObj.toBoolean
+      case "Short" => strObj.toShort
+      case "Byte" => strObj.toByte
+      case "String" => strObj
+      case _ => throw new Exception("unknow primitive type: " + primitiveType)
+    }
+  }
   
 }
