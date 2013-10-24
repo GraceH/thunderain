@@ -36,12 +36,13 @@ sbtjar=sbt-launch.jar
 
 if [ ! -f $sbtjar ]; then
   echo 'downloading '$sbtjar 1>&2
-  curl -O http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.11.3-2/$sbtjar
+  wget http://typesafe.artifactoryonline.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.11.3-2/$sbtjar
 fi
 
 java -ea                          \
   $JAVA_OPTS                      \
   -Djava.net.preferIPv4Stack=true \
+  -DHIVE_HOME=$HIVE_HOME          \
   -XX:+AggressiveOpts             \
   -XX:+UseParNewGC                \
   -XX:+UseConcMarkSweepGC         \

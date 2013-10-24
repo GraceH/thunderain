@@ -66,9 +66,12 @@ object Thunderain {
     //parse the conf file
     FrameworkEnv.parseConfig(args(0))
 
+    //make batchDuration configurable
+    val batchDurationSeconds = System.getenv("BATCH_DURATION").toInt
+
     //create streaming context
     SparkEnv.set(sparkEnv)
-    val ssc =  new StreamingContext(SharkEnv.sc, Seconds(10))
+    val ssc =  new StreamingContext(SharkEnv.sc, Seconds(batchDurationSeconds))
     ssc.checkpoint("checkpoint")
     if (schedulerEnabled == true) {
       ssc.sparkContext.setLocalProperty("spark.scheduler.pool", "2")
