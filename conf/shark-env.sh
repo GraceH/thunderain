@@ -23,19 +23,19 @@ export SPARK_MEM=15g
 export SHARK_MASTER_MEM=1g
 
 # (Required) Point to your Scala installation.
-export SCALA_HOME=/usr/scala/scala-2.9.3
+export SCALA_HOME=/opt/scala-2.9.3
 
 # (Required) Point to the patched Hive binary distribution
-export HIVE_DEV_HOME=/home/grace/Works/Projects/hive/hive-0.9.0-sharkdev
-export HIVE_HOME=/home/grace/Works/Projects/hive/hive-0.9.0-bin-sharkPatched    #/opt/hive/build/dist
+export HIVE_DEV_HOME=/opt/hive
+export HIVE_HOME=/opt/hive/build/dist
 
 # (Optional) Specify the location of Hive's configuration directory. By default,
 # it points to $HIVE_HOME/conf
 #export HIVE_CONF_DIR="$HIVE_HOME/conf"
 
 # For running Shark in distributed mode, set the following:
-export HADOOP_HOME="/home/grace/Works/hadoop/hadoop-1.2.1"
-export SPARK_HOME="/home/grace/Works/spark/spark-incubator-master"
+export HADOOP_HOME="/opt/hadoop-0.20-mapreduce-0.20.2+1359"
+export SPARK_HOME="/opt/spark_publish"
 export MASTER="spark://10.0.2.12:7077"
 #export MESOS_NATIVE_LIBRARY=/usr/local/lib/libmesos.so
 

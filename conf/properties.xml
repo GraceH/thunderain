@@ -7,7 +7,6 @@
         <operator type="aggregate" class="thunderainproject.thunderain.framework.operator.AggregateOperator"/>
         <operator type="join_count" class="thunderainproject.thunderain.example.weblog.operator.JoinCountOperator"/>
         <operator type="qiyi_accumulator" class="thunderainproject.thunderain.example.qiyi_log.QiyiLogOperator"/>
-        <operator type="identity_op" class="thunderainproject.thunderain.example.cloudstone.IdentityOperator"/>
     </operators>
     <application>
         <category>clickstream</category>
@@ -83,38 +82,6 @@
                     <key>total_timelen</key>
                 </keys>
                 <output>thunderainproject.thunderain.example.qiyi_log.QiyiLogOutput</output>
-            </job>
-        </jobs>
-    </application>
-    <application>
-        <category>cloudstone-log4j</category>
-        <parser>thunderainproject.thunderain.example.cloudstone.JSONParser</parser>
-        <items>
-            <item>h_host_ip</item>
-            <item>h_data_type</item>
-            <item>h_data_source</item>
-            <item>h_user</item>
-            <item>h_tags</item>
-            <item>h_time</item>
-            <item>b_message</item>
-            <item>b_log_level</item>
-            <item>b_trace</item>
-            <item>b_module_name</item>
-            <item>b_others</item>
-            <item>b_pid</item>
-            <item>b_tid</item>
-            <item>b_thread_name</item>
-            <item>b_source_file</item>
-            <item>b_line_number</item>
-        </items>
-        <jobs>
-            <job name="log_view" type="identity_op">
-                <partitions>64</partitions>
-                <output>thunderainproject.thunderain.example.cloudstone.TachyonRDDOutput</output>
-            </job>
-            <job name="log_view" type="identity_op">
-                <partitions>64</partitions>
-                <output>thunderainproject.thunderain.example.cloudstone.MongoDBOutput</output>
             </job>
         </jobs>
     </application>
