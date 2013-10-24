@@ -46,7 +46,7 @@ class MongoDBOutput extends AbstractEventOutput{
       row.asInstanceOf[Event].keyMap.map(col => {
         builder += col._1 ->  PrimitiveObjInspectorFactory.stringObjConversion(col._1, outputFormat(col._1))
       })
-      table.insert(builder)
+      //table.insert(builder)
     }).foreach(_ => Unit)
   }
 }
