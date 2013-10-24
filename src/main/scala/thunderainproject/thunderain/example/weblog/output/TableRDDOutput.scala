@@ -90,6 +90,10 @@ abstract class TableRDDOutput extends AbstractEventOutput {
           colBuilders(r._2).append(r._1, objInspectors(r._2)))
         numRows += 1
       })
+      
+      //colBuilders.zipWithIndex.foreach(c => {
+      //  print(c._1.build.array.mkString("\t")+"\n")
+      //})
 
       //val tblPartStats = new TablePartitionStats(colBuilders.map(_.stats), numRows)
       //stat += (index, tblPartStats)

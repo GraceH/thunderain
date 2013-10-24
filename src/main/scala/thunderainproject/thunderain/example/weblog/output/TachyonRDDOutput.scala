@@ -30,6 +30,7 @@ import scala.collection.mutable
 import shark.SharkEnv
 import shark.memstore2.column.ColumnBuilder
 import shark.memstore2.{TablePartition, TablePartitionStats}
+import shark.execution.serialization.JavaSerializer
 
 import thunderainproject.thunderain.framework.output.{AbstractEventOutput, PrimitiveObjInspectorFactory,
   WritableObjectConvertFactory}
@@ -44,6 +45,7 @@ abstract class TachyonRDDOutput extends AbstractEventOutput {
   @transient lazy val tachyonClientOnSlave = TachyonFS.get(tachyonURL)
   lazy val tablePath = tachyonWarehousePath + "/" + outputName
   @transient lazy val table = tachyonClientOnSlave.getRawTable(tablePath)
+  var rawTableId = -1;
 
   if (!tachyonClient.exist(tachyonWarehousePath)) {
     tachyonClient.mkdir(tachyonWarehousePath)
@@ -79,8 +81,9 @@ abstract class TachyonRDDOutput extends AbstractEventOutput {
     if (tachyonClient.exist(tablePath)) {
       tachyonClient.delete(tablePath, true)
     }
-    tachyonClient.createRawTable(tablePath, formats.length + 1)
+    rawTableId = tachyonClient.createRawTable(tablePath, formats.length + 1)
 
+    tachyonClient.close()
     stream.transform((r, t) => r.map(c => (t.milliseconds / 1000, c)))
   }
 
@@ -105,11 +108,17 @@ abstract class TachyonRDDOutput extends AbstractEventOutput {
 
       tblRdd.persist(StorageLevel.MEMORY_ONLY)
       tblRdd.foreach(_ => Unit)
+      
+      tachyonClientOnSlave.updateRawTableMetadata(rawTableId, 
+          ByteBuffer.wrap(JavaSerializer.serialize(statAccum.value.toMap)))
 
       // put rdd and statAccum to cache manager
       SharkEnv.memoryMetadataManager.put(outputName, tblRdd)
       SharkEnv.memoryMetadataManager.putStats(outputName, statAccum.value.toMap)
+      
+      
     })
+    tachyonClientOnSlave.close()
   }
 
   private def buildTachyonRdd(rdd: RDD[_],
@@ -130,7 +139,8 @@ abstract class TachyonRDDOutput extends AbstractEventOutput {
 
       //val tblPartStats = new TablePartitionStats(colBuilders.map(_.stats), numRows)
       //stat += (index, tblPartStats)
-
+      
+      val colBuffers = new Array[ByteBuffer](colBuilders.size)
       colBuilders.zipWithIndex.foreach(c => {
         val col = table.getRawColumn(c._2 + 1)
         var file = col.getPartition(index)
@@ -141,12 +151,15 @@ abstract class TachyonRDDOutput extends AbstractEventOutput {
         file = col.getPartition(index)
 
         val os = file.getOutStream(WriteType.TRY_CACHE)
-        os.write(c._1.build.array)
+        val _buffer = c._1.build
+        colBuffers(c._2) = _buffer
+        os.write(_buffer.array)
         os.close()
       })
       createMetaCol(numRows, index)
-
-      Iterator(new TablePartition(numRows, colBuilders.map(_.build)))
+      
+      //Iterator(new TablePartition(numRows, colBuilders.map(_.build)))
+      Iterator(new TablePartition(numRows, colBuffers))
     })
 
     newRdd
@@ -212,3 +225,4 @@ abstract class TachyonRDDOutput extends AbstractEventOutput {
     zippedRdd
   }
 }
+
