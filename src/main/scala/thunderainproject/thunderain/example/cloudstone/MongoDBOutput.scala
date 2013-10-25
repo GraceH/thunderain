@@ -42,11 +42,11 @@ class MongoDBOutput extends AbstractEventOutput{
     val table = mongoDBClientOnSlave(outputName)
     //insert each row into mongoDBCollection
     stream.map(row => {
-      var builder = MongoDBObject.newBuilder
+      val cells = new mutable.HashMap[String, Any]
       row.asInstanceOf[Event].keyMap.map(col => {
-        builder += col._1 ->  PrimitiveObjInspectorFactory.stringObjConversion(col._1, outputFormat(col._1))
+        cells(col._1) = PrimitiveObjInspectorFactory.stringObjConversion(col._2, outputFormat(col._1))
       })
-      table.insert(builder)
+      table.insert(MongoDBObject(cells.toList))
     }).foreach(_ => Unit)
   }
 }

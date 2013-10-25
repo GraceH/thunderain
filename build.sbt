@@ -31,6 +31,8 @@ libraryDependencies += "org.tachyonproject" % "tachyon" % "0.3.0-SNAPSHOT"
 
 libraryDependencies += "org.mongodb" %% "casbah" % "2.6.3"
 
+libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.2" % "test"
+
 resolvers ++= Seq(
    "Local Maven" at Path.userHome.asFile.toURI.toURL + ".m2/repository",
    "Maven Repository" at "http://repo1.maven.org/maven2",
