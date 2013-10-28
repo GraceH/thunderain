@@ -111,10 +111,12 @@
             <job name="log_view" type="identity_op">
                 <partitions>64</partitions>
                 <output>thunderainproject.thunderain.example.cloudstone.TachyonRDDOutput</output>
+                <outputargs>h_time</outputargs>
             </job>
             <job name="log_view" type="identity_op">
                 <partitions>64</partitions>
                 <output>thunderainproject.thunderain.example.cloudstone.MongoDBOutput</output>
+                <outputargs>h_time</outputargs>
             </job>
         </jobs>
     </application>

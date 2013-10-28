@@ -49,6 +49,9 @@ abstract class AbstractEventOutput extends Serializable{
   def preprocessOutput(stream: DStream[_]): DStream[_] = {
     stream
   }
+
+  def help(): Unit = {}
+  def setArgs(args: String): Unit = {}
 }
 
 class StdEventOutput extends AbstractEventOutput {

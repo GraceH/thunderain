@@ -52,10 +52,8 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
   @transient lazy val tachyonClientOnSlave = TachyonFS.get(tachyonURL)
   lazy val tablePath = tachyonWarehousePath + "/" + outputName
   @transient lazy val table = tachyonClientOnSlave.getRawTable(tablePath)
-  var rawTableId = -1;
-  val timeColumnIndex = {
-    outputFormat.keys.zipWithIndex.toMap.apply("h_time")
-  }
+  var rawTableId = -1
+  var timeColumnIndex: Int = _
 
   if (!tachyonClient.exist(tachyonWarehousePath)) {
     tachyonClient.mkdir(tachyonWarehousePath)
@@ -71,6 +69,14 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
   private var checkpointTm = System.currentTimeMillis() / 1000
   val CHECKPOINT_INTERVAL = 600
 
+  override def setArgs(args: String): Unit = {
+    val timestampFieldName = args.split(" ").apply(0)
+    timeColumnIndex = outputFormat.keys.zipWithIndex.toMap.apply(timestampFieldName)
+  }
+
+  override def help(): Unit = {
+    println(this.getClass.getSimpleName + " timestampFieldName")
+  }
   /**
    * set the output name, derivatives can use it to set output name.
    */
@@ -167,8 +173,10 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
           outputFormat.zipWithIndex.foreach(r => {
             val obj = {
               //TODO to move it into parser or other transformation part
-              if (r._1._1.equals("h_time")) keyMap(r._1._1).toLong.asInstanceOf[Object]
-              else keyMap(r._1._1).asInstanceOf[Object]
+//              if (r._1._1.equals("h_time")) keyMap(r._1._1).toLong.asInstanceOf[Object]
+//              else keyMap(r._1._1).asInstanceOf[Object]
+              PrimitiveObjInspectorFactory.stringObjConversion(keyMap(r._1._1), r._1._2)
+                .asInstanceOf[Object]
             }
             //println("column: (" + r._2 + ")" + r._1._1 + "=" + obj)
             colBuilders(r._2).append(obj, objInspectors(r._2))
@@ -249,8 +257,8 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
             outputFormat.zipWithIndex.foreach(r =>{
               val obj = {
                 //TODO to move it into parser or other transformation part
-                if (r._1._1.equals("h_time")) keyMap(r._1._1).toLong.asInstanceOf[Object]
-                else keyMap(r._1._1).asInstanceOf[Object]
+                PrimitiveObjInspectorFactory.stringObjConversion(keyMap(r._1._1), r._1._2)
+                  .asInstanceOf[Object]
               }
               //println("column: (" + r._2 + ")" + r._1._1 + "=" + obj)
               colBuilders(r._2).append(obj, objInspectors(r._2))

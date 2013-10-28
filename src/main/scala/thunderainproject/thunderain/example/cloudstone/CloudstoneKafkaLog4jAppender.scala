@@ -10,11 +10,12 @@ import sun.jvmstat.monitor._
 
 import scala.util.parsing.json._
 import scala.collection.mutable
+import scala.reflect.BeanProperty
 
 
 class CloudstoneKafkaLog4jAppender extends KafkaLog4jAppender {
   // to configure tags
-  var tags: String = ""
+  @BeanProperty var tags: String = ""
   lazy val pid: String = {
     val name = ManagementFactory.getRuntimeMXBean().getName()
     val pidPattern = """(\d+)@.*""".r
@@ -28,7 +29,7 @@ class CloudstoneKafkaLog4jAppender extends KafkaLog4jAppender {
   }
 
   // to configure data_source
-  var dataSource: String = {
+  @BeanProperty var dataSource: String = {
     try {
       // combine java cmd line with its arguments as the default source data
       // 1. to get the pid of the system
@@ -54,37 +55,22 @@ class CloudstoneKafkaLog4jAppender extends KafkaLog4jAppender {
 
   }
   // to configure data_type
-  var dataType: String = null
+  @BeanProperty var dataType: String = null
   // emit time
   def time = {
     System.currentTimeMillis() / 1000
   }
   // to configure the user
-  var user: String = {
+  @BeanProperty var user: String = {
     System.getProperty("user.name")
   }
   // to configure the host ip
-  var hostIP: String = {
+  @BeanProperty var hostIP: String = {
     InetAddress.getLocalHost().getHostAddress()
   }
 
   private var messageHeader = ""
   private var keyMap = new mutable.HashMap[String, Any]()
-
-  def getTags: String = tags
-  def setTags(tags: String) { this.tags = tags }
-
-  def getDataSource: String = dataSource
-  def setDataSource(dataSource: String) {this.dataSource = dataSource }
-
-  def getDataType: String = dataType
-  def setDataType(dataType: String) { this.dataType = dataType }
-
-  def getUser: String = user
-  def setUser(user: String) { this.user = user }
-
-  def getHostIP: String = hostIP
-  def setHostIP(hostIP: String) { this.hostIP = hostIP }
 
   override def subappend(event: LoggingEvent) = {
     //make the trace information if the layout ignores it

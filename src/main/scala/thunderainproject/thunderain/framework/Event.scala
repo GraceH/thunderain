@@ -23,4 +23,10 @@ class Event(val timestamp: Long,
   override def toString() = {
     "Event: timestamp[" +  timestamp + "] " + keyMap.mkString("[", "][", "]")
   }
+
+  override def equals(other: Any) = other match {
+    case that: Event =>
+      this.toString == that.toString || super.equals(that)
+    case _ => false
+  }
 }

@@ -29,9 +29,13 @@ libraryDependencies +=
 
 libraryDependencies += "org.tachyonproject" % "tachyon" % "0.3.0-SNAPSHOT"
 
-libraryDependencies += "org.mongodb" %% "casbah" % "2.6.3"
+// for test only
+libraryDependencies += "org.tachyonproject" % "tachyon-tests" % "0.3.0-SNAPSHOT"
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.2" % "test"
+// for test only and must use 1.9.1 to compitable with spark's scalatest
+libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1" % "test"
+
+libraryDependencies += "org.mongodb" %% "casbah" % "2.6.3"
 
 resolvers ++= Seq(
    "Local Maven" at Path.userHome.asFile.toURI.toURL + ".m2/repository",

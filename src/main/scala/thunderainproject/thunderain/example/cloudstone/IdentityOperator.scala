@@ -34,6 +34,7 @@ class IdentityOperator extends AbstractOperator with OperatorConfig {
 
     val partitionNum = (conf \ "partitions").text
     val output = (conf \ "output").text
+    val args = (conf \ "outputargs").text
 
     config = new IdentityOperatorConfig(
       nam,
@@ -48,6 +49,7 @@ class IdentityOperator extends AbstractOperator with OperatorConfig {
       case e: Exception => throw new Exception("class " + config.outputClsName + " new instance failed")
     }
     outputCls.setOutputName(config.name)
+    outputCls.setArgs(args)
   }
 
   protected var config: IdentityOperatorConfig = _
