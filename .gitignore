@@ -1,5 +1,6 @@
 *.class
 *.log
+/checkpoint
 
 # sbt specific
 dist/*
