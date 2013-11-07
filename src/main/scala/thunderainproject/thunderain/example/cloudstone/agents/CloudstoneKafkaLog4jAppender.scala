@@ -1,11 +1,11 @@
-package thunderainproject.thunderain.example.cloudstone
+package thunderainproject.thunderain.example.cloudstone.agents
 
 import org.apache.log4j.spi.LoggingEvent
 import org.apache.log4j.helpers.LogLog
+import org.apache.log4j.Layout
 
-import java.net.InetAddress
 import java.lang.management.ManagementFactory
-
+import java.net.InetAddress
 import sun.jvmstat.monitor._
 
 import scala.util.parsing.json._
@@ -14,8 +14,10 @@ import scala.reflect.BeanProperty
 
 
 class CloudstoneKafkaLog4jAppender extends KafkaLog4jAppender {
+  private val LINE_SEP = "<br>"
   // to configure tags
-  @BeanProperty var tags: String = ""
+  var tags: String = ""
+
   lazy val pid: String = {
     val name = ManagementFactory.getRuntimeMXBean().getName()
     val pidPattern = """(\d+)@.*""".r
@@ -46,7 +48,7 @@ class CloudstoneKafkaLog4jAppender extends KafkaLog4jAppender {
       val jvmArgs = MonitoredVmUtil.jvmArgs(vm)
       val jvmFlags = MonitoredVmUtil.jvmFlags(vm)
 
-      pid + " " + jvmArgs + " " + jvmFlags + mainClass + " " + mainArgs
+      pid + " " + jvmArgs + " " + jvmFlags + " " + mainClass + " " + mainArgs
     }
     catch {
       // if no right tool.jar available, only returns PID
@@ -69,7 +71,6 @@ class CloudstoneKafkaLog4jAppender extends KafkaLog4jAppender {
     InetAddress.getLocalHost().getHostAddress()
   }
 
-  private var messageHeader = ""
   private var keyMap = new mutable.HashMap[String, Any]()
 
   override def subappend(event: LoggingEvent) = {
@@ -79,7 +80,7 @@ class CloudstoneKafkaLog4jAppender extends KafkaLog4jAppender {
       val s = event.getThrowableStrRep()
       if (s != null ) {
         for (i <- s) {
-          trace += i  + "<br>"//Layout.LINE_SEP
+          trace += i  + LINE_SEP//Layout.LINE_SEP
         }
       }
     }
@@ -94,13 +95,14 @@ class CloudstoneKafkaLog4jAppender extends KafkaLog4jAppender {
     keyMap("b_others") = ""
     keyMap("b_pid") = pid
     keyMap("b_tid") = Thread.currentThread().getId.toString
-    keyMap("b_message") = super.subappend(event).stripLineEnd
+    keyMap("b_message") = super.subappend(event).replaceAll(Layout.LINE_SEP, LINE_SEP).stripLineEnd
     val message = JSONObject(keyMap.toMap).toString()
 
-    LogLog.debug("new message in JSON: " + message)
+    LogLog.debug("New message in JSON: " + message)
 
     // append the header of the stream-out data
-    topic + "|||" + "{" + message + "}"
+    // which is unique for the thunderain project only
+    topic + "|||" + message
   }
 
   override def activateOptions() {
@@ -113,6 +115,7 @@ class CloudstoneKafkaLog4jAppender extends KafkaLog4jAppender {
     keyMap("h_data_type") = dataType
   }
 
+  //requires layout
   override def requiresLayout: Boolean = true
 }
 

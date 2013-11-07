@@ -16,23 +16,26 @@
  * limitations under the License.
  */
 
-package thunderainproject.thunderain.example.cloudstone
+package thunderainproject.thunderain.example.cloudstone.parsers
 
 import org.apache.spark.Logging
 
 import thunderainproject.thunderain.framework.parser.AbstractEventParser
 import thunderainproject.thunderain.framework.Event
-import scala.util.parsing.json._
+
 import scala.Some
+import scala.util.parsing.json._
+import scala.collection.immutable.HashMap
 
 //TODO to move the parser out of the example package
 class JSONParser extends AbstractEventParser with Logging{
   override def parseEvent(event: String, schema: Array[String]) = {
+    logDebug("The input JSON event: " + event)
     val eventMap : Map[String, String] = {
       try {
         JSON.parseFull(event) match {
           case Some(kvs : Map[String, String]) => {
-            logDebug("Parsed event: " + kvs.mkString("[", "][", "]"))
+            logDebug("The parsed event: " + kvs.mkString("[", "][", "]"))
             kvs
           }
           case None => {
@@ -43,7 +46,8 @@ class JSONParser extends AbstractEventParser with Logging{
       catch {
         case _ =>  {
           logError("Failed to parse JSON object:"  + event)
-          schema.zip(schema.map(s => "")).toMap
+          //schema.zip(schema.map(s => "")).toMap
+          new HashMap[String, String]()
         }
       }
     }
@@ -54,7 +58,7 @@ class JSONParser extends AbstractEventParser with Logging{
 }
 
 object JSONParser {
-  //to test the JSON parser only, this main class won't be open to the end user
+  //TODO move the following test into UnitTest part
   def main(args: Array[String]) {
       val log = """{ "h_time" : "1381807235" , """ +
       """ "h_host_ip" : "10.1.0.56" , """ +

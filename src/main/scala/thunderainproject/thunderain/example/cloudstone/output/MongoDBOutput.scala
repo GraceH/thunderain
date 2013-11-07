@@ -1,11 +1,13 @@
-package thunderainproject.thunderain.example.cloudstone
+package thunderainproject.thunderain.example.cloudstone.output
 
 import thunderainproject.thunderain.framework.output.{PrimitiveObjInspectorFactory, AbstractEventOutput}
+import thunderainproject.thunderain.framework.Event
+
 import org.apache.spark.streaming.DStream
 
 import com.mongodb.casbah.Imports._
 import scala.collection.mutable
-import thunderainproject.thunderain.framework.Event
+
 
 class MongoDBOutput extends AbstractEventOutput{
   //TODO to load the outputFormat automatically from shark/hive tableInfo
@@ -34,14 +36,10 @@ class MongoDBOutput extends AbstractEventOutput{
 
   @transient lazy val mongoDBClientOnSlave = MongoClient(mongoURL).apply(mongoDB)
 
-
-  /**
-   * abstract method of output DStream, derivatives should implement this.
-   */
   def output(stream: DStream[_]): Unit = {
     val table = mongoDBClientOnSlave(outputName)
     //insert each row into mongoDBCollection
-    stream.map(row => {
+    stream.filter(_.asInstanceOf[Event].keyMap.nonEmpty).map(row => {
       val cells = new mutable.HashMap[String, Any]
       row.asInstanceOf[Event].keyMap.map(col => {
         cells(col._1) = PrimitiveObjInspectorFactory.stringObjConversion(col._2, outputFormat(col._1))

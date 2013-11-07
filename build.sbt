@@ -35,6 +35,7 @@ libraryDependencies += "org.tachyonproject" % "tachyon-tests" % "0.3.0-SNAPSHOT"
 // for test only and must use 1.9.1 to compitable with spark's scalatest
 libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1" % "test"
 
+
 libraryDependencies += "org.mongodb" %% "casbah" % "2.6.3"
 
 resolvers ++= Seq(
@@ -55,9 +56,10 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { mergeStrategy => {
 }
 
 excludedJars in assembly <<= (fullClasspath in assembly) map { cp =>
-  cp filter {x => (x.data.getName.contains("spark")
+  cp filter {x => (x.data.getName.contains("spark-core") 
+    || x.data.getName.contains("spark-streaming")
     || x.data.getName.contains("shark")
-    || x.data.getName.contains("tachyon"))}
+    || x.data.getName.contains("tachyon")
+    || x.data.getName.contains("slf4j"))}
 }
-
 

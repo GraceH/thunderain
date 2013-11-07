@@ -7,7 +7,7 @@
         <operator type="aggregate" class="thunderainproject.thunderain.framework.operator.AggregateOperator"/>
         <operator type="join_count" class="thunderainproject.thunderain.example.weblog.operator.JoinCountOperator"/>
         <operator type="qiyi_accumulator" class="thunderainproject.thunderain.example.qiyi_log.QiyiLogOperator"/>
-        <operator type="identity_op" class="thunderainproject.thunderain.example.cloudstone.IdentityOperator"/>
+        <operator type="identity_op" class="thunderainproject.thunderain.example.cloudstone.operations.IdentityOperator"/>
     </operators>
     <application>
         <category>clickstream</category>
@@ -88,7 +88,7 @@
     </application>
     <application>
         <category>cloudstone-log4j</category>
-        <parser>thunderainproject.thunderain.example.cloudstone.JSONParser</parser>
+        <parser>thunderainproject.thunderain.example.cloudstone.parsers.JSONParser</parser>
         <items>
             <item>h_host_ip</item>
             <item>h_data_type</item>
@@ -108,15 +108,20 @@
             <item>b_line_number</item>
         </items>
         <jobs>
+            <!-- output the table data onto tachyon-->
             <job name="log_view" type="identity_op">
                 <partitions>64</partitions>
-                <output>thunderainproject.thunderain.example.cloudstone.TachyonRDDOutput</output>
+                <output>thunderainproject.thunderain.example.cloudstone.output.TachyonRDDOutput</output>
                 <outputargs>h_time</outputargs>
             </job>
+            <!-- output the documents onto mongoDB -->
             <job name="log_view" type="identity_op">
                 <partitions>64</partitions>
-                <output>thunderainproject.thunderain.example.cloudstone.MongoDBOutput</output>
-                <outputargs>h_time</outputargs>
+                <output>thunderainproject.thunderain.example.cloudstone.output.MongoDBOutput</output>
+            </job>
+            <!-- output the files onto HDFS -->
+            <job name="log_view" type="identity_op">
+                <output>thunderainproject.thunderain.example.cloudstone.output.HDFSOutput</output>
             </job>
         </jobs>
     </application>

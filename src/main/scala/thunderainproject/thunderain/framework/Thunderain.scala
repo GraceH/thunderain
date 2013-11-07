@@ -67,7 +67,12 @@ object Thunderain {
     FrameworkEnv.parseConfig(args(0))
 
     //make batchDuration configurable
-    val batchDurationSeconds = System.getenv("BATCH_DURATION").toInt
+    val batchDurationSeconds = {
+      val duration = System.getenv("BATCH_DURATION")
+      if(duration == null) 10;
+      else duration.toInt
+    }
+
 
     //create streaming context
     SparkEnv.set(sparkEnv)

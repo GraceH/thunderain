@@ -1,4 +1,4 @@
-package thunderainproject.thunderain.example.cloudstone
+package thunderainproject.thunderain.example.cloudstone.agents
 
 import kafka.producer.{Producer, ProducerConfig, ProducerData}
 import kafka.producer.async.MissingConfigException
@@ -6,8 +6,8 @@ import org.apache.log4j.spi.LoggingEvent
 import org.apache.log4j.AppenderSkeleton
 import org.apache.log4j.helpers.LogLog
 import kafka.utils.Logging
-import java.util.{Properties, Date}
 import scala.collection.mutable
+import java.util.{Properties, Date}
 
 /**
  * A little modifications on KafkaLo4jAppender 0.7.2

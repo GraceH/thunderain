@@ -1,4 +1,4 @@
-package thunderainproject.thunderain.example.cloudstone
+package thunderainproject.thunderain.example.cloudstone.operations
 
 import scala.xml.Node
 
@@ -8,9 +8,6 @@ import thunderainproject.thunderain.framework.Event
 import thunderainproject.thunderain.framework.operator.{OperatorConfig, AbstractOperator}
 import thunderainproject.thunderain.framework.output.AbstractEventOutput
 
-/**
- * Simply store the parsed data into its corresponding column
- */
 class IdentityOperator extends AbstractOperator with OperatorConfig {
   class IdentityOperatorConfig (
                               val name: String,

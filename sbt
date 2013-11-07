@@ -22,6 +22,7 @@ root=$(
 )
 
 shark_config=$root/conf/shark-env.sh
+. $root/conf/thunderain-env.sh
 
 if [ -e $shark_config ]; then
   . $shark_config
@@ -41,6 +42,7 @@ fi
 
 java -ea                          \
   $JAVA_OPTS                      \
+  -Dlog4j.configuration=file:$root/conf/log4j.properties\
   -Djava.net.preferIPv4Stack=true \
   -DHIVE_HOME=$HIVE_HOME          \
   -XX:+AggressiveOpts             \

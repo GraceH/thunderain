@@ -28,7 +28,7 @@ object PrimitiveObjInspectorFactory {
   
   def newPrimitiveObjInspector(primitiveType: String) = {
     objInspectors.getOrElseUpdate(primitiveType, {
-      primitiveType match {
+      primitiveType.capitalize match {
         case "Boolean" =>
           PrimitiveObjectInspectorFactory.javaBooleanObjectInspector
         case "Byte" =>
@@ -38,6 +38,8 @@ object PrimitiveObjInspectorFactory {
         case "Int" =>
           PrimitiveObjectInspectorFactory.javaIntObjectInspector
         case "Long" =>
+          PrimitiveObjectInspectorFactory.javaLongObjectInspector
+        case "Bigint" =>
           PrimitiveObjectInspectorFactory.javaLongObjectInspector
         case "Float" =>
           PrimitiveObjectInspectorFactory.javaFloatObjectInspector
@@ -53,10 +55,11 @@ object PrimitiveObjInspectorFactory {
   }
 
   def stringObjConversion(strObj: String, primitiveType: String) = {
-    primitiveType match {
+    primitiveType.capitalize match {
       case "Int" => strObj.toInt
       case "Float"  => strObj.toFloat
       case "Long" => strObj.toLong
+      case "Bigint" => strObj.toLong
       case "Double" => strObj.toDouble
       case "Boolean" => strObj.toBoolean
       case "Short" => strObj.toShort

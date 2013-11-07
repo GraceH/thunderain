@@ -35,7 +35,7 @@ export HIVE_HOME=/home/grace/Works/Projects/hive/hive-0.9.0-bin-sharkPatched    
 
 # For running Shark in distributed mode, set the following:
 export HADOOP_HOME="/home/grace/Works/hadoop/hadoop-1.2.1"
-export SPARK_HOME="/home/grace/Works/spark/spark-incubator-master"
+export SPARK_HOME="/home/grace/Works/Projects/spark/spark-incubator-master"
 export MASTER="spark://10.0.2.12:7077"
 #export MESOS_NATIVE_LIBRARY=/usr/local/lib/libmesos.so
 
