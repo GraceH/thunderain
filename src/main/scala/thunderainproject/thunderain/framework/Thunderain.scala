@@ -20,11 +20,12 @@ package thunderainproject.thunderain.framework
 
 import org.apache.log4j.PropertyConfigurator
 
-import org.apache.spark.SparkEnv
+import org.apache.spark.{SparkContext, SparkEnv}
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.Seconds
 
 import shark.{SharkEnv, SharkServer}
+import scala.collection.mutable.HashMap
 
 
 object Thunderain {
@@ -45,22 +46,6 @@ object Thunderain {
       false
     }
 
-    var sparkEnv: SparkEnv = null
-    //start shark server thread
-    val sharkThread = new Thread("SharkServer") {
-      setDaemon(true)
-      override def run() {
-        SharkEnv.initWithSharkContext("Thunderain")
-        if (schedulerEnabled == true) {
-          SharkEnv.sc.setLocalProperty("spark.scheduler.pool", "1")
-        }
-        sparkEnv = SparkEnv.get
-        SharkServer.main(Array())
-      }
-    }
-    sharkThread.start()
-    Thread.sleep(10000)
-
     PropertyConfigurator.configure(args(1))
 
     //parse the conf file
@@ -74,9 +59,9 @@ object Thunderain {
     }
 
 
-    //create streaming context
-    SparkEnv.set(sparkEnv)
-    val ssc =  new StreamingContext(SharkEnv.sc, Seconds(batchDurationSeconds))
+    //create streaming context based on Shark
+    val sc = SharkEnv.initWithSharkContext("Thunderain")
+    val ssc =  new StreamingContext(sc, Seconds(batchDurationSeconds))
     ssc.checkpoint("checkpoint")
     if (schedulerEnabled == true) {
       ssc.sparkContext.setLocalProperty("spark.scheduler.pool", "2")
