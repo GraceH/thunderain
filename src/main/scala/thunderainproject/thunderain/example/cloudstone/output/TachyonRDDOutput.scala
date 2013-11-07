@@ -17,7 +17,7 @@ import shark.memstore2.ColumnarStructObjectInspector.IDStructField
 import shark.memstore2.{ColumnarStructObjectInspector, TablePartitionBuilder, TablePartition, TablePartitionStats}
 import shark.execution.serialization.JavaSerializer
 import shark.tachyon.TachyonTableWriter
-import shark.{SharkEnvSlave, SharkEnv}
+import shark.{SharkContext, SharkEnvSlave, SharkEnv}
 
 import scala._
 import scala.collection.mutable
@@ -31,7 +31,7 @@ import tachyon.client.WriteType
 
 /**
  * Output the data structure to tachyon table
- * TODO 1. get the format automatically from the meta info from shark
+ * 1. get the format automatically from the meta info from shark
  * 2. ser/der the column accordingly onto the tachyon
  * 3. persist the meta-data(including the states for PartitionPrune) onto the tachyon for offline accessing
  * 4. merge the older data with newly updates(deleting obsolete data based on the DATA_TTL)
@@ -40,13 +40,12 @@ import tachyon.client.WriteType
  */
 class TachyonRDDOutput extends AbstractEventOutput with Logging{
   initLogging()
-  //TODO to load the outputFormat automatically from shark/hive tableInfo
-  var fieldNames = Array[String]("h_host_ip", "h_data_type", "h_data_source", "h_user", "h_tags", "h_time",
-                                     "b_message", "b_log_level", "b_trace", "b_module_name", "b_others",
-                                     "b_pid","b_tid", "b_thread_name", "b_source_file", "b_line_number")
+
+  var fieldNames: Array[String] = _
 
   var tachyonWriter: TachyonTableWriter = _
   var timeColumnIndex: Int = _
+  var timestampFieldName: String = _
 
   val cleanBefore = if (System.getenv("DATA_CLEAN_TTL") == null) {
     -1
@@ -63,8 +62,7 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
    * @param args
    */
   override def setArgs(args: String): Unit = {
-    val timestampFieldName = args.split(" ").apply(0)
-    timeColumnIndex = fieldNames.zipWithIndex.toMap.apply(timestampFieldName)
+    timestampFieldName = args.split(" ").apply(0)
   }
 
   /**
@@ -77,9 +75,6 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
   override def setOutputName(name: String) {
     val tblName = name + "_tachyon"
     super.setOutputName(tblName)
-    super.setOutputDataFormat(Array[String]("String","String","String", "String", "String", "Bigint",
-                                                "String", "String", "String", "String", "String",
-                                                "String", "String", "String", "String", "String"))
   }
 
   protected[cloudstone] def setOutputFormat(fieldNames: Array[String], fieldFormats: Array[String]) {
@@ -93,6 +88,13 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
     logDebug("obtain the tachyonWrite in preprocessOutput")
     //obtain the tachyonWriter from the shark util
     tachyonWriter = SharkEnv.tachyonUtil.createTableWriter(outputName, formats.length + 1)
+
+    val sc = stream.context.sparkContext.asInstanceOf[SharkContext]
+    val resultSets = sc.sql("describe %s".format(outputName)).flatMap(_.split("\\t")).zipWithIndex
+    setOutputFormat(resultSets.filter(_._2%3==0).map(_._1).toArray,
+                    resultSets.filter(_._2%3==1).map(_._1).toArray)
+
+    timeColumnIndex = fieldNames.zipWithIndex.toMap.apply(timestampFieldName)
     //no transformation for the input stream here
     stream
   }
@@ -286,7 +288,8 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
       //tachyonWriter.writeColumnPartition(column, partitionIndex, buf)
 
       //the workaround solution
-      val rawTable = SharkEnvSlave.tachyonUtil.client.getRawTable(SharkEnvSlave.tachyonUtil.getPath(outputName))
+      val tablepath = SharkEnvSlave.tachyonUtil.getPath(outputName)
+      val rawTable = SharkEnvSlave.tachyonUtil.client.getRawTable(tablepath)
       val rawColumn = rawTable.getRawColumn(column)
       var file = rawColumn.getPartition(partitionIndex)
       if(file!=null && SharkEnvSlave.tachyonUtil.client.exist(file.getPath)) {

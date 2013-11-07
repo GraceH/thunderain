@@ -6,40 +6,29 @@ import thunderainproject.thunderain.framework.Event
 import org.apache.spark.streaming.DStream
 
 import scala.collection.mutable
+import shark.SharkContext
 
 
 class HDFSOutput extends AbstractEventOutput{
-  //TODO to load the outputFormat automatically from shark/hive tableInfo
-  @transient lazy val outputFormat = mutable.LinkedHashMap (
-    ("h_host_ip", "String"),
-    ("h_data_type", "String"),
-    ("h_data_source", "String") ,
-    ("h_user", "String") ,
-    ("h_tags", "String") ,
-    ("h_time", "Long"),
-    ("b_message", "String"),
-    ("b_log_level", "String"),
-    ("b_trace", "String"),
-    ("b_module_name", "String"),
-    ("b_others", "String"),
-    ("b_pid", "String"),
-    ("b_tid", "String"),
-    ("b_thread_name", "String"),
-    ("b_source_file", "String"),
-    ("b_line_number", "String")
-  )
+  var fieldNames: Array[String] = _
 
   val hdfsPath = System.getenv("HDFS_PATH")
   val deliminator = "|"
+
+  override def preprocessOutput(stream: DStream[_]): DStream[_] = {
+    val sc = stream.context.sparkContext.asInstanceOf[SharkContext]
+    val resultSets = sc.sql("describe %s".format(outputName)).flatMap(_.split("\\t")).zipWithIndex
+    fieldNames = resultSets.filter(_._2%3==0).map(_._1).toArray
+    //no transformation for the input stream here
+    stream
+  }
 
   def output(stream: DStream[_]): Unit = {
     val outputPath = hdfsPath + "/" + outputName
     stream.foreach( (rdd, t) => {
       val partitionPath = outputPath + "/" + t.milliseconds / 1000
       rdd.filter(_.asInstanceOf[Event].keyMap.nonEmpty).map(row => {
-        val values = outputFormat.map( r => {
-          row.asInstanceOf[Event].keyMap(r._1)
-        })
+        val values = fieldNames.map(row.asInstanceOf[Event].keyMap(_))
         values.mkString(deliminator)
       }).saveAsTextFile(partitionPath)
     })
