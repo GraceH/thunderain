@@ -7,6 +7,7 @@ import org.apache.spark.streaming.DStream
 
 import com.mongodb.casbah.Imports._
 import scala.collection.mutable
+import scala.transient
 
 
 class MongoDBOutput extends AbstractEventOutput{
@@ -30,21 +31,24 @@ class MongoDBOutput extends AbstractEventOutput{
     ("b_line_number", "String")
   )
 
-
-  val mongoURL = MongoClientURI(System.getenv("MONGO_ADDRESSES"))
   val mongoDB = System.getenv("MONGO_DB")
+  val mongoAddress = System.getenv("MONGO_ADDRESSES")
 
+  @transient lazy val mongoURL = MongoClientURI(mongoAddress)
   @transient lazy val mongoDBClientOnSlave = MongoClient(mongoURL).apply(mongoDB)
+  @transient lazy val table = mongoDBClientOnSlave(outputName)
 
   def output(stream: DStream[_]): Unit = {
-    val table = mongoDBClientOnSlave(outputName)
     //insert each row into mongoDBCollection
-    stream.filter(_.asInstanceOf[Event].keyMap.nonEmpty).map(row => {
-      val cells = new mutable.HashMap[String, Any]
-      row.asInstanceOf[Event].keyMap.map(col => {
-        cells(col._1) = PrimitiveObjInspectorFactory.stringObjConversion(col._2, outputFormat(col._1))
+    stream.foreach(r => {
+      r.filter(_.asInstanceOf[Event].keyMap.nonEmpty).foreach(row => {
+        val cells = new mutable.HashMap[String, Any]
+        row.asInstanceOf[Event].keyMap.map(col => {
+          cells(col._1) = PrimitiveObjInspectorFactory.stringObjConversion(col._2, outputFormat(col._1))
+        })
+        table.insert(MongoDBObject(cells.toList))
       })
-      table.insert(MongoDBObject(cells.toList))
-    }).foreach(_ => Unit)
+    })
+
   }
 }
