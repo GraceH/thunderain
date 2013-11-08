@@ -18,7 +18,7 @@
 
 package thunderainproject.thunderain.framework
 
-import org.apache.log4j.PropertyConfigurator
+import org.apache.log4j.{LogManager, PropertyConfigurator}
 
 import org.apache.spark.{SparkContext, SparkEnv}
 import org.apache.spark.streaming.StreamingContext
@@ -35,8 +35,8 @@ object Thunderain {
       System.exit(1)
     }
 
-    System.setProperty("spark.cleaner.ttl", "600")
-    System.setProperty("spark.stream.concurrentJobs", "2")
+    System.setProperty("spark.cleaner.ttl", "1800")
+    System.setProperty("spark.stream.concurrentJobs", "1")
 
     val schedulerEnabled = if (args.length > 2) {
       System.setProperty("spark.scheduler.mode", "FAIR")
@@ -46,7 +46,7 @@ object Thunderain {
       false
     }
 
-    PropertyConfigurator.configure(args(1))
+
 
     //parse the conf file
     FrameworkEnv.parseConfig(args(0))
@@ -61,6 +61,8 @@ object Thunderain {
 
     //create streaming context based on Shark
     val sc = SharkEnv.initWithSharkContext("Thunderain")
+    LogManager.resetConfiguration();
+    PropertyConfigurator.configure(args(1))
     val ssc =  new StreamingContext(sc, Seconds(batchDurationSeconds))
     ssc.checkpoint("checkpoint")
     if (schedulerEnabled == true) {
