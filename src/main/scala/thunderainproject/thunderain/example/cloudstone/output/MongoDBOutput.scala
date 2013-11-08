@@ -9,9 +9,10 @@ import com.mongodb.casbah.Imports._
 import scala.collection.mutable
 import scala.transient
 import shark.SharkContext
+import org.apache.spark.Logging
 
 
-class MongoDBOutput extends AbstractEventOutput{
+class MongoDBOutput extends AbstractEventOutput with Logging{
   var outputFormat: Map[String, String] = _
 
   val mongoDB = System.getenv("MONGO_DB")
@@ -22,10 +23,19 @@ class MongoDBOutput extends AbstractEventOutput{
   @transient lazy val table = mongoDBClientOnSlave(outputName)
 
   override def preprocessOutput(stream: DStream[_]): DStream[_] = {
-    val sc = stream.context.sparkContext.asInstanceOf[SharkContext]
-    val resultSets = sc.sql("describe %s".format(outputName))
-      .map(x => {val y = x.split("\\t"); (y(0)-> y(1))})
-    outputFormat = resultSets.toMap
+    val sc = try{
+      stream.context.sparkContext.asInstanceOf[SharkContext]  }
+    catch {
+      case _ => {
+        logError("Failed to obtain a SharkContext instance")
+        null
+      }
+    }
+    if(sc != null){
+      val resultSets = sc.sql("describe %s".format(outputName))
+        .map(x => {val y = x.split("\\t"); (y(0)-> y(1))})
+      outputFormat = resultSets.toMap
+    }
     //no transformation for the input stream here
     stream
   }
