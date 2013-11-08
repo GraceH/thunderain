@@ -22,8 +22,9 @@ import scala.collection.mutable
 
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory
-import java.util.Date
+import java.util.{Date, Calendar}
 import java.sql.Timestamp
+
 
 object PrimitiveObjInspectorFactory {
   val objInspectors = new mutable.HashMap[String, ObjectInspector]
@@ -68,11 +69,12 @@ object PrimitiveObjInspectorFactory {
       case "Byte" => strObj.toByte
       case "String" => strObj
       case "Date" => {
-        val stamp = new Timestamp(strObj.toLong);
-        new Date(stamp.getTime());
+        val cal = Calendar.getInstance()
+        cal.setTimeInMillis(strObj.toLong)
+        cal.getTime
       }
       case _ => throw new Exception("unknow primitive type: " + primitiveType)
     }
   }
-  
+
 }
