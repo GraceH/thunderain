@@ -50,7 +50,7 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
   val cleanBefore = if (System.getenv("DATA_CLEAN_TTL") == null) {
     -1
   } else {
-    System.getenv("DATA_CLEAN_TTL").toInt
+    System.getenv("DATA_CLEAN_TTL").toLong * 1000L
   }
 
   val COLUMN_SIZE = 1000
@@ -96,7 +96,6 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
     }
     if(sc != null){
       val resultSets = sc.sql("describe %s".format(outputName)).flatMap(_.split("\\t")).zipWithIndex
-      setOutputFormat(resultSets.filter(_._2%3==0).map(_._1).toArray,
       setOutputFormat(resultSets.filter(_._2%3==0).map(_._1).toArray,
         resultSets.filter(_._2%3==1).map(_._1).toArray)
 
@@ -211,7 +210,7 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
     val fields: JList[_ <: StructField] = soi.getAllStructFieldRefs
     val obj =   row.asInstanceOf[Object]
 
-    val currTm = System.currentTimeMillis()/1000
+    val currTm = System.currentTimeMillis()
     val longInspector = PrimitiveObjInspectorFactory.newPrimitiveObjInspector("Long")
 
     val timeField = fields.get(timeColumnIndex)

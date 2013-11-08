@@ -60,7 +60,7 @@ class CloudstoneKafkaLog4jAppender extends KafkaLog4jAppender {
   @BeanProperty var dataType: String = null
   // emit time
   def time = {
-    System.currentTimeMillis() / 1000
+    System.currentTimeMillis()
   }
   // to configure the user
   @BeanProperty var user: String = {
