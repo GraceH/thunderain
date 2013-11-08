@@ -85,9 +85,6 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
   override def setOutputDataFormat(formats: Array[String]) = ()
 
   override def preprocessOutput(stream: DStream[_]): DStream[_] = {
-    logDebug("obtain the tachyonWrite in preprocessOutput")
-    //obtain the tachyonWriter from the shark util
-    tachyonWriter = SharkEnv.tachyonUtil.createTableWriter(outputName, formats.length + 1)
 
     val sc = try{
       stream.context.sparkContext.asInstanceOf[SharkContext]  }
@@ -100,11 +97,17 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
     if(sc != null){
       val resultSets = sc.sql("describe %s".format(outputName)).flatMap(_.split("\\t")).zipWithIndex
       setOutputFormat(resultSets.filter(_._2%3==0).map(_._1).toArray,
+      setOutputFormat(resultSets.filter(_._2%3==0).map(_._1).toArray,
         resultSets.filter(_._2%3==1).map(_._1).toArray)
 
       timeColumnIndex = fieldNames.zipWithIndex.toMap.apply(timestampFieldName)
     }
-      //no transformation for the input stream here
+
+    logDebug("obtain the tachyonWrite in preprocessOutput")
+    //obtain the tachyonWriter from the shark util
+    tachyonWriter = SharkEnv.tachyonUtil.createTableWriter(outputName, formats.length + 1)
+
+    //no transformation for the input stream here
       stream
   }
 
