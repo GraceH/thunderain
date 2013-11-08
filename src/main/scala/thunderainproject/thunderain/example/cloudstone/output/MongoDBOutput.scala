@@ -51,6 +51,8 @@ class MongoDBOutput extends AbstractEventOutput{
           cells(col._1) = PrimitiveObjInspectorFactory.stringObjConversion(col._2, outputFormat(col._1))
         })
         table.insert(MongoDBObject(cells.toList))
+        //TODO find alternative way
+        //table.ensureIndex({"h_time"->"hashed"})
       })
 
       if(mongoDBupdatesTrigger != null) {
