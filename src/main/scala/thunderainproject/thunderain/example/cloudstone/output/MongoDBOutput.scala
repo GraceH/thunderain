@@ -18,7 +18,7 @@ class MongoDBOutput extends AbstractEventOutput{
     ("h_data_source", "String") ,
     ("h_user", "String") ,
     ("h_tags", "String") ,
-    ("h_time", "Long"),
+    ("h_time", "Date"),
     ("b_message", "String"),
     ("b_log_level", "String"),
     ("b_trace", "String"),
