@@ -67,7 +67,7 @@ class MongoDBOutput extends AbstractEventOutput{
 
   def sendHTTPGetRequest(url: String): Int = {
     val obj: URL = new URL(url)
-    val con:HttpURLConnection = obj.openConnection()
+    val con:HttpURLConnection = obj.openConnection().asInstanceOf[HttpURLConnection]
     con.getResponseCode()
   }
 }
