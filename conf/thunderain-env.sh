@@ -17,6 +17,7 @@ export HDFS_PATH=hdfs://localhost:54310/test
 # mongoDB configuration
 export MONGO_ADDRESSES=mongodb://localhost:27017
 export MONGO_DB=test
+export MONGO_DB_UPDATES_TRIGGER=http://x.x.x.x/ajax/update_trigger
 
 # spark configuration
 export SPARK_HOME="/home/grace/Works/Projects/spark/spark-incubator-master"
