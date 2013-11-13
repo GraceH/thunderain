@@ -111,17 +111,11 @@
             <!-- output the table data onto tachyon-->
             <job name="log_view" type="identity_op">
                 <partitions>64</partitions>
-                <output>thunderainproject.thunderain.example.cloudstone.output.TachyonRDDOutput</output>
-                <outputargs>h_time</outputargs>
-            </job>
-            <!-- output the documents onto mongoDB -->
-            <job name="log_view" type="identity_op">
-                <partitions>64</partitions>
-                <output>thunderainproject.thunderain.example.cloudstone.output.MongoDBOutput</output>
-            </job>
-            <!-- output the files onto HDFS -->
-            <job name="log_view" type="identity_op">
-                <output>thunderainproject.thunderain.example.cloudstone.output.HDFSOutput</output>
+                <outputs>
+                   <output class="thunderainproject.thunderain.example.cloudstone.output.TachyonRDDOutput" args="h_time"/>
+                   <output class="thunderainproject.thunderain.example.cloudstone.output.MongoDBOutput"/>
+                   <output class="thunderainproject.thunderain.example.cloudstone.output.HDFSOutput"/>
+                </outputs>
             </job>
         </jobs>
     </application>

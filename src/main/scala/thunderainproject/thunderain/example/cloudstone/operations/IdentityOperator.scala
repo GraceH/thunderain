@@ -14,7 +14,8 @@ class IdentityOperator extends AbstractOperator with OperatorConfig {
                               val window: Option[Long],
                               val slide: Option[Long],
                               val partitionNum: Int,
-                              val outputClsName: String) extends Serializable
+                              val outputClzs: Array[String],
+                              val outputArgs: Array[String]) extends Serializable
 
   override def parseConfig(conf: Node) {
     val nam = (conf \ "@name").text
@@ -30,27 +31,43 @@ class IdentityOperator extends AbstractOperator with OperatorConfig {
     })
 
     val partitionNum = (conf \ "partitions").text
-    val output = (conf \ "output").text
-    val args = (conf \ "outputargs").text
+
+    val outputProps = Array("@class", "@args").map( p => {
+      (conf \ "outputs" \ "output" ).map(output => {
+        val node = output \ p
+        if(node.length == 0) ""
+        else node.text
+      })
+    })
+
+    val outputs = outputProps(0).toArray
+    val argses = outputProps(1).toArray
+
 
     config = new IdentityOperatorConfig(
       nam,
       props(0) map { s => s.toLong },
       props(1) map { s => s.toLong },
       partitionNum.toInt,
-      output)
+      outputs,
+      argses)
 
-    outputCls = try {
-      Class.forName(config.outputClsName).newInstance().asInstanceOf[AbstractEventOutput]
-    } catch {
-      case e: Exception => throw new Exception("class " + config.outputClsName + " new instance failed")
+
+
+    outputClzs = new Array[AbstractEventOutput](outputs.size)
+    for(i <- 0 until outputs.size) {
+      outputClzs(i) = try {
+        Class.forName(config.outputClzs(i)).newInstance().asInstanceOf[AbstractEventOutput]
+      } catch {
+        case e: Exception => throw new Exception("class " + config.outputClzs(i) + " new instance failed")
+      }
+      outputClzs(i).setOutputName(config.name)
+      outputClzs(i).setArgs(config.outputArgs(i))
     }
-    outputCls.setOutputName(config.name)
-    outputCls.setArgs(args)
   }
 
   protected var config: IdentityOperatorConfig = _
-  protected var outputCls: AbstractEventOutput = _
+  protected var outputClzs: Array[AbstractEventOutput] = _
 
   override def process(stream: DStream[Event]) {
     val windowedStream = windowStream(stream, (config.window, config.slide))
@@ -58,6 +75,6 @@ class IdentityOperator extends AbstractOperator with OperatorConfig {
     val resultStream = windowedStream
       .transform(r => r.coalesce(config.partitionNum, true))
 
-    outputCls.output(outputCls.preprocessOutput(resultStream))
+    outputClzs.map(clz => clz.output(clz.preprocessOutput(resultStream)))
   }
 }
