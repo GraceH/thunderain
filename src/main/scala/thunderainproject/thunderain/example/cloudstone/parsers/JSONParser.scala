@@ -45,7 +45,7 @@ class JSONParser extends AbstractEventParser with Logging{
       }
       catch {
         case _ =>  {
-          logError("Failed to parse JSON object:"  + event)
+          println("Failed to parse JSON object:"  + event)
           //schema.zip(schema.map(s => "")).toMap
           new HashMap[String, String]()
         }
