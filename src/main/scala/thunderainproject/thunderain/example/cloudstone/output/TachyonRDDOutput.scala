@@ -27,6 +27,7 @@ import java.util.{List => JList, ArrayList => JArrayList}
 import java.nio.ByteBuffer
 
 import tachyon.client.WriteType
+import java.io.IOException
 
 
 /**
@@ -52,6 +53,8 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
   } else {
     System.getenv("DATA_CLEAN_TTL").toLong * 1000L
   }
+
+  var cachedRDD: RDD[TablePartition] = _
 
   val COLUMN_SIZE = 1000
 //  private var checkpointTm = System.currentTimeMillis() / 1000
@@ -145,6 +148,9 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
     stat: Accumulable[mutable.ArrayBuffer[(Int, TablePartitionStats)], (Int, TablePartitionStats)]): RDD[TablePartition] = {
     logDebug("To build tachyon rdd")
     val inputRdd = prepareTablePartitionRDD(rdd, stat)
+    inputRdd.cache()
+    if(cachedRDD!=null)cachedRDD.unpersist()
+    cachedRDD = inputRdd
     writeTablePartitionRDDToTachyon(inputRdd)
   }
 
@@ -154,6 +160,9 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
     stat: Accumulable[mutable.ArrayBuffer[(Int, TablePartitionStats)], (Int, TablePartitionStats)]): RDD[TablePartition] = {
     logDebug("To zip tachyon rdd")
     val rdd = prepareTablePartitionRDDBasedOnExistingRDD(newRdd, stat, oldRdd)
+    rdd.cache()
+    if(cachedRDD!=null)cachedRDD.unpersist()
+    cachedRDD = rdd
     writeTablePartitionRDDToTachyon(rdd)
   }
 
@@ -219,12 +228,15 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
 
     val compareWithZero = ObjectInspectorUtils.compare(0L.asInstanceOf[Object], longInspector,
                                               recTm, timeFieldObjInspector)
-    lazy val elapsedTime = ObjectInspectorUtils.compare(currTm.asInstanceOf[Object], longInspector,
-      recTm, timeFieldObjInspector)
+    lazy val elapsedTime = ObjectInspectorUtils.copyToStandardJavaObject(
+                              currTm.asInstanceOf[Object], longInspector).asInstanceOf[Long] -
+                           ObjectInspectorUtils.copyToStandardJavaObject(
+                              recTm, timeFieldObjInspector).asInstanceOf[Long]
 
+    //logDebug("elaspedTime: " + elapsedTime + " cleanBefore: " + cleanBefore + " isZero: " + compareWithZero)
     if(compareWithZero != 0 && (cleanBefore == -1 || elapsedTime < cleanBefore)) {
       //append single row here
-      logDebug("append one row here")
+      //logDebug("append one row here")
       for (i <- 0 until fields.size) {
         val field = fields.get(i)
         val fieldOI: ObjectInspector = field.getFieldObjectInspector
@@ -238,7 +250,7 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
       }
       tablePartitionBuilder.incrementRowCount()
     }
-    logDebug("Row number: " + tablePartitionBuilder.numRows)
+    //logDebug("Row number: " + tablePartitionBuilder.numRows)
     tablePartitionBuilder
   }
 
@@ -309,16 +321,19 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
       }
       rawColumn.createPartition(partitionIndex)
       file = rawColumn.getPartition(partitionIndex)
-      // it seems that CACHE_THROUGH will cause some tachyon exception
-      // e.g., failed to rename some worker's checkpoint info to data folder
-      // or asynchronously deletion
-      val outStream = file.getOutStream(WriteType.TRY_CACHE)
-      outStream.write(buf.array(), 0, buf.limit())
-      outStream.close()
+      var outStream = file.getOutStream(WriteType.CACHE_THROUGH)
+      try{
+        outStream.write(buf.array(), 0, buf.limit())
+      }
+      finally {
+        //to close the outStream in any case
+        if(outStream != null) outStream.close()
+      }
     }
   }
 
   protected[cloudstone] def readFromTachyon(tblName: String): RDD[TablePartition] = {
+    if (cachedRDD != null) cachedRDD
     if(!SharkEnv.tachyonUtil.tableExists(outputName)) null
     else {SharkEnv.tachyonUtil.createRDD(tblName)}
   }
