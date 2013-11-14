@@ -35,8 +35,8 @@ object Thunderain {
       System.exit(1)
     }
 
-    System.setProperty("spark.cleaner.ttl", "1800")
-    System.setProperty("spark.stream.concurrentJobs", "1")
+    System.setProperty("spark.cleaner.ttl", "600")
+    System.setProperty("spark.stream.concurrentJobs", "2")
 
     val schedulerEnabled = if (args.length > 2) {
       System.setProperty("spark.scheduler.mode", "FAIR")
