@@ -329,6 +329,7 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
       var file = rawColumn.getPartition(partitionIndex)
       if(file!=null && SharkEnvSlave.tachyonUtil.client.exist(file.getPath)) {
         //to delete the existing partition file before hand
+        //TODO this solution will cause shark query failure!!!!
         SharkEnvSlave.tachyonUtil.client.delete(file.getPath, true)
       }
       rawColumn.createPartition(partitionIndex)
