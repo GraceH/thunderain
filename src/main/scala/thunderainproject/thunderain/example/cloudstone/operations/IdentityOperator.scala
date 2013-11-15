@@ -75,6 +75,9 @@ class IdentityOperator extends AbstractOperator with OperatorConfig {
     val resultStream = windowedStream
       .transform(r => r.coalesce(config.partitionNum, true))
 
-    outputClzs.map(clz => clz.output(clz.preprocessOutput(resultStream)))
+    val jobs:Array[Thread] = outputClzs.map(clz =>
+      new Thread(new Runnable(){def run = {clz.output(clz.preprocessOutput(resultStream))}}))
+    //outputClzs.map(clz => clz.output(clz.preprocessOutput(resultStream)))
+    jobs.map(t => {t.start; t}).foreach(_.join)
   }
 }
