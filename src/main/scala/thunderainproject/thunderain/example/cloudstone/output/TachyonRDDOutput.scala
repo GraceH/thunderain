@@ -27,8 +27,17 @@ import java.util.{List => JList, ArrayList => JArrayList}
 import java.nio.ByteBuffer
 
 import tachyon.client.WriteType
-import java.io.IOException
 
+object TachyonRDDOutput extends Logging{
+  //This function only for performance measurement.
+  def elapsedTime[T](func: => T, actionName: String ) = {
+    val startTime =  System.currentTimeMillis()
+    val result = func
+    val endTime = System.currentTimeMillis()
+    logInfo("Action %s takes totally %d milli-seconds".format(actionName, endTime - startTime))
+    result
+  }
+}
 
 /**
  * Output the data structure to tachyon table
@@ -57,8 +66,8 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
   var cachedRDD: RDD[TablePartition] = _
 
   val COLUMN_SIZE = 1000
-//  private var checkpointTm = System.currentTimeMillis() / 1000
-//  val CHECKPOINT_INTERVAL = 600
+  private var checkpointTm = System.currentTimeMillis() / 1000
+  val CHECKPOINT_INTERVAL = 600
 
   /**
    * Set and parsing the output arguments accordingly
@@ -123,14 +132,17 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
         buildTachyonRdd(r, statAccum)
       } else {
         val oldRdd = readFromTachyon(outputName)
-        try {zipTachyonRdd(oldRdd, r, statAccum)}
+        val newRdd = try {zipTachyonRdd(oldRdd, r, statAccum)}
         catch{case _ => buildTachyonRdd(r, statAccum)}
         //checkpoint is not necessary for tachyon output
-//        val currTm = System.currentTimeMillis() / 1000
-//        if (currTm - checkpointTm >= CHECKPOINT_INTERVAL) {
-//          rdd.checkpoint()
-//          checkpointTm = currTm
-//        }
+        if(cachedRDD != null) {
+          val currTm = System.currentTimeMillis() / 1000
+          if (currTm - checkpointTm >= CHECKPOINT_INTERVAL) {
+            cachedRDD.checkpoint()
+            checkpointTm = currTm
+          }
+        }
+        newRdd
       }
 
       //dummy output stream
@@ -148,7 +160,7 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
     stat: Accumulable[mutable.ArrayBuffer[(Int, TablePartitionStats)], (Int, TablePartitionStats)]): RDD[TablePartition] = {
     logDebug("To build tachyon rdd")
     val inputRdd = prepareTablePartitionRDD(rdd, stat)
-    inputRdd.cache()
+    TachyonRDDOutput.elapsedTime(inputRdd.cache(), "CachingInSpark")
     if(cachedRDD!=null)cachedRDD.unpersist()
     cachedRDD = inputRdd
     writeTablePartitionRDDToTachyon(inputRdd)
@@ -160,7 +172,7 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
     stat: Accumulable[mutable.ArrayBuffer[(Int, TablePartitionStats)], (Int, TablePartitionStats)]): RDD[TablePartition] = {
     logDebug("To zip tachyon rdd")
     val rdd = prepareTablePartitionRDDBasedOnExistingRDD(newRdd, stat, oldRdd)
-    rdd.cache()
+    TachyonRDDOutput.elapsedTime(rdd.cache(), "CachingInSpark")
     if(cachedRDD!=null)cachedRDD.unpersist()
     cachedRDD = rdd
     writeTablePartitionRDDToTachyon(rdd)
