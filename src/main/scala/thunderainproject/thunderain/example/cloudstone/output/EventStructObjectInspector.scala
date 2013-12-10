@@ -9,6 +9,10 @@ import java.util.{List => JList, ArrayList => JArrayList}
 
 import thunderainproject.thunderain.framework.output.PrimitiveObjInspectorFactory
 import thunderainproject.thunderain.framework.Event
+import shark.memstore2.ColumnarStructObjectInspector.IDStructField
+import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory
+import scala._
 
 /**
  * Parsing the structure in Event.
@@ -17,32 +21,7 @@ import thunderainproject.thunderain.framework.Event
  */
 class EventStructObjectInspector extends StructObjectInspector{
 
-  protected class MyField extends StructField {
-    @BeanProperty var fieldID: Int = _
-    @BeanProperty var fieldName: String = _
-    @BeanProperty var fieldObjectInspector: ObjectInspector = _
-    @BeanProperty var fieldComment: String = _
-
-    def this(fieldID: Int, fieldName: String,
-       fieldObjectInspector: ObjectInspector) {
-      this()
-      this.fieldID = fieldID
-      this.fieldName = fieldName.toLowerCase()    // the column name must be in lowercase
-      this.fieldObjectInspector = fieldObjectInspector
-    }
-
-     def this(fieldID: Int, fieldName: String,
-       fieldObjectInspector: ObjectInspector, fieldComment: String) {
-      this(fieldID, fieldName, fieldObjectInspector)
-      this.fieldComment = fieldComment
-    }
-
-    override def toString(): String = {
-      "" + fieldID + ":" + fieldName
-    }
-  }
-
-  private var fields: JList[MyField] = _
+  private var fields: JList[IDStructField] = _
 
 
   override def getTypeName(): String =  {
@@ -54,8 +33,14 @@ class EventStructObjectInspector extends StructObjectInspector{
     this()
     val structObjectInspectors = new JArrayList[ObjectInspector](structFieldNames.size())
     for(i <- 0 until structFieldNames.size) {
-      structObjectInspectors.add(PrimitiveObjInspectorFactory.newPrimitiveObjInspector(
-        structFieldObjectInspectorsInString.get(i)))
+      val pType = new PrimitiveTypeInfo
+      pType.setTypeName(structFieldObjectInspectorsInString.get(i))
+      val fieldOI =  pType.getCategory match {
+        case Category.PRIMITIVE =>  PrimitiveObjectInspectorFactory.getPrimitiveJavaObjectInspector(
+          pType.getPrimitiveCategory)
+        case _ => throw new Exception("Not support NonPrimitiveType")
+      }
+      structObjectInspectors.add(fieldOI)
     }
     init(structFieldNames, structObjectInspectors, null)
   }
@@ -67,9 +52,9 @@ class EventStructObjectInspector extends StructObjectInspector{
     assert (structFieldComments == null ||
       (structFieldNames.size() == structFieldComments.size()))
 
-    fields = new JArrayList[MyField](structFieldNames.size())
+    fields = new JArrayList[IDStructField](structFieldNames.size())
     for (i <- 0 until structFieldNames.size()) {
-      fields.add(new MyField(i, structFieldNames.get(i),
+      fields.add(new IDStructField(i, structFieldNames.get(i),
         structFieldObjectInspectors.get(i),
         if(structFieldComments == null)null else structFieldComments.get(i)))
     }
