@@ -22,6 +22,8 @@ import shark.{SharkContext, SharkEnvSlave, SharkEnv}
 import scala._
 import scala.collection.mutable
 import scala.collection.JavaConversions._
+import scala.concurrent._
+import ExecutionContext.Implicits.global
 
 import java.util.{List => JList, ArrayList => JArrayList}
 import java.nio.ByteBuffer
@@ -310,7 +312,10 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
     inputrdd.mapPartitionsWithIndex {
       case(partitionIndex, iter) => {
         val partition = iter.next()
+        val startTime = System.currentTimeMillis()
         writeColumnPartition(partition, partitionIndex)
+        val endTime = System.currentTimeMillis()
+        logInfo("Write Partition# %d  onto Tachyon costs: %d ms.".format(partitionIndex,(endTime - startTime)))
         Iterator(partition)
       }
     }
@@ -318,31 +323,39 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
 
   protected[cloudstone] def writeColumnPartition(partition: TablePartition, partitionIndex: Int) {
     partition.toTachyon.zipWithIndex.foreach { case(buf, column) =>
-      // we'd better to use the existing shark's API, but unfortunately the following function cannot overwrite the
-      // existing partition files. Since the slave side cannot get rawTable without calling createTable()
-      //tachyonWriter.writeColumnPartition(column, partitionIndex, buf)
+      val  f: Future[Unit] = future {
+        //write output to tachyon in parallel
+        //TODO to cache the exception and register some onSuccess or onFailure actions.
 
-      //the workaround solution
-      val tablepath = SharkEnvSlave.tachyonUtil.getPath(outputName)
-      val rawTable = SharkEnvSlave.tachyonUtil.client.getRawTable(tablepath)
-      val rawColumn = rawTable.getRawColumn(column)
-      var file = rawColumn.getPartition(partitionIndex)
-      if(file!=null && SharkEnvSlave.tachyonUtil.client.exist(file.getPath)) {
-        //to delete the existing partition file before hand
-        //TODO this solution will cause shark query failure!!!!
-        SharkEnvSlave.tachyonUtil.client.delete(file.getPath, true)
-      }
-      rawColumn.createPartition(partitionIndex)
-      file = rawColumn.getPartition(partitionIndex)
-      var outStream = file.getOutStream(WriteType.CACHE_THROUGH)
-      try{
-        outStream.write(buf.array(), 0, buf.limit())
-      }
-      finally {
-        //to close the outStream in any case
-        if(outStream != null) outStream.close()
-      }
-    }
+        // we'd better to use the existing shark's API, but unfortunately the following function cannot overwrite the
+        // existing partition files. Since the slave side cannot get rawTable without calling createTable()
+        //tachyonWriter.writeColumnPartition(column, partitionIndex, buf)
+
+        val startTime = System.currentTimeMillis()
+        //the workaround solution
+        val tablepath = SharkEnvSlave.tachyonUtil.getPath(outputName)
+        val rawTable = SharkEnvSlave.tachyonUtil.client.getRawTable(tablepath)
+        val rawColumn = rawTable.getRawColumn(column)
+        var file = rawColumn.getPartition(partitionIndex)
+        if(file!=null && SharkEnvSlave.tachyonUtil.client.exist(file.getPath)) {
+          //to delete the existing partition file before hand
+          //TODO this solution will cause shark query failure!!!!
+          SharkEnvSlave.tachyonUtil.client.delete(file.getPath, true)
+        }
+        rawColumn.createPartition(partitionIndex)
+        file = rawColumn.getPartition(partitionIndex)
+        //TODO catch exception when caching data
+        val outStream = file.getOutStream(WriteType.CACHE_THROUGH)
+        try{
+          outStream.write(buf.array(), 0, buf.limit())
+        }
+        finally {
+          //to close the outStream in any case
+          if(outStream != null) outStream.close()
+        }
+        val endTime = System.currentTimeMillis()
+        logInfo("Write Col# %d Partition# %d  onto Tachyon costs: %d ms.".format(column, partitionIndex,(endTime - startTime)))
+      }}
   }
 
   protected[cloudstone] def readFromTachyon(tblName: String): RDD[TablePartition] = {
