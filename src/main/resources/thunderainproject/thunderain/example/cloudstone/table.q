@@ -42,7 +42,7 @@ CREATE TABLE log_view_cached(
     b_line_number STRING
     )
 ROW FORMAT SERDE "shark.memstore2.ColumnarSerDe"
-TBLPROPERTIES ("shark.cache" = "heap");
+TBLPROPERTIES ("shark.cache" = "true");
 
 
 -- The _tachyon table is stored in the tachyon distributed file system in memory store
