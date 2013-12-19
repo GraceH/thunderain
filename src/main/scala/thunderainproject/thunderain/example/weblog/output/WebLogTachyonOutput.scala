@@ -18,6 +18,8 @@
 
 package thunderainproject.thunderain.example.weblog.output
 
+import shark.SharkEnv
+
 class WebLogTachyonOutput extends TachyonRDDOutput {
   override def setOutputName(name: String) {
     val tblName = name + "_tachyon"

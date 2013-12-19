@@ -44,7 +44,8 @@ abstract class TachyonRDDOutput extends AbstractEventOutput {
 
   @transient val tachyonClient = TachyonFS.get(tachyonURL)
   @transient lazy val tachyonClientOnSlave = TachyonFS.get(tachyonURL)
-  lazy val tablePath = tachyonWarehousePath + "/" + outputName
+  val tableKey = SharkEnv.makeTachyonTableKey(MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName)
+  lazy val tablePath = tachyonWarehousePath + "/" + tableKey
   @transient lazy val table = tachyonClientOnSlave.getRawTable(tablePath)
   var rawTableId = -1;
 
