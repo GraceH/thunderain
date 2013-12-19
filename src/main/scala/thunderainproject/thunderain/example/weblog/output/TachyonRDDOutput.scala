@@ -29,13 +29,14 @@ import scala.collection.mutable
 
 import shark.SharkEnv
 import shark.memstore2.column.ColumnBuilder
-import shark.memstore2.{TablePartition, TablePartitionStats}
+import shark.memstore2.{CacheType, TablePartition, TablePartitionStats}
 import shark.execution.serialization.JavaSerializer
 
 import thunderainproject.thunderain.framework.output.{AbstractEventOutput, PrimitiveObjInspectorFactory,
   WritableObjectConvertFactory}
 
 import tachyon.client.{TachyonFS, WriteType}
+import org.apache.hadoop.hive.metastore.MetaStoreUtils
 
 abstract class TachyonRDDOutput extends AbstractEventOutput {
   val tachyonURL = System.getenv("TACHYON_MASTER")
@@ -94,7 +95,8 @@ abstract class TachyonRDDOutput extends AbstractEventOutput {
       val tblRdd = if (cleanBefore == -1) {
         buildTachyonRdd(r, statAccum)
       } else {
-        val rdd = SharkEnv.memoryMetadataManager.get(outputName) match {
+        val rdd = SharkEnv.memoryMetadataManager
+          .getMemoryTable(MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName).map(_.tableRDD) match {
           case None => buildTachyonRdd(r, statAccum)
           case Some(s) => zipTachyonRdd(s, r, statAccum)
         }
@@ -113,8 +115,12 @@ abstract class TachyonRDDOutput extends AbstractEventOutput {
           ByteBuffer.wrap(JavaSerializer.serialize(statAccum.value.toMap)))
 
       // put rdd and statAccum to cache manager
-      SharkEnv.memoryMetadataManager.put(outputName, tblRdd)
-      SharkEnv.memoryMetadataManager.putStats(outputName, statAccum.value.toMap)
+      val memoryTable = SharkEnv.memoryMetadataManager
+        .getMemoryTable(MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName)
+        .getOrElse(SharkEnv.memoryMetadataManager.createMemoryTable(
+        MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName, CacheType.MEMORY))
+      memoryTable.tableRDD = tblRdd
+      SharkEnv.memoryMetadataManager.putStats(MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName, statAccum.value.toMap)
       
       
     })
