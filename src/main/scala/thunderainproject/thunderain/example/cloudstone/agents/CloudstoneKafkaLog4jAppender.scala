@@ -73,7 +73,7 @@ class CloudstoneKafkaLog4jAppender extends KafkaLog4jAppender {
 
   private var keyMap = new mutable.HashMap[String, Any]()
 
-  override def subappend(event: LoggingEvent) = {
+  override def subAppend(event: LoggingEvent) = {
     //make the trace information if the layout ignores it
     var trace = ""
     if(layout != null && layout.ignoresThrowable()) {
@@ -95,7 +95,7 @@ class CloudstoneKafkaLog4jAppender extends KafkaLog4jAppender {
     keyMap("b_others") = ""
     keyMap("b_pid") = pid
     keyMap("b_tid") = Thread.currentThread().getId.toString
-    keyMap("b_message") = super.subappend(event).replaceAll(Layout.LINE_SEP, LINE_SEP).stripLineEnd
+    keyMap("b_message") = super.subAppend(event).replaceAll(Layout.LINE_SEP, LINE_SEP).stripLineEnd
     val message = JSONObject(keyMap.toMap).toString()
 
     LogLog.debug("New message in JSON: " + message)
