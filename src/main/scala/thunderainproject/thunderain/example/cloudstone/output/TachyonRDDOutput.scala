@@ -193,7 +193,7 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
         addRow(tablePartitionBuilder, row, createEventStructObjectInspector)
       })
 
-      logDebug("Total row number: " + tablePartitionBuilder.numRows)
+      //logDebug("Total row number: " + tablePartitionBuilder.numRows)
       if(stat!= null)stat += Tuple2(partitionIndex, tablePartitionBuilder.stats)
       Iterator(tablePartitionBuilder.build)
     }}
@@ -215,7 +215,6 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
             addRow(tablePartitionBuilder, row, createColumnarStructObjectInspector)
           ) })
         newRDDIter.foreach(row => addRow(tablePartitionBuilder, row, createEventStructObjectInspector))
-        logDebug("Total row number: " + tablePartitionBuilder.numRows)
         Iterator(tablePartitionBuilder)
       })mapPartitionsWithIndex{ case(partitionIndex, iter) => {
         val partition = iter.next()
