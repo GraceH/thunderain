@@ -1,5 +1,7 @@
 import AssemblyKeys._
 
+//logLevel in Global := Level.Debug
+
 name := "thunderain"
 
 version := "0.1.0"
@@ -22,7 +24,7 @@ libraryDependencies +=
   "org.apache.spark" %% "spark-core" % "0.9.0-incubating-SNAPSHOT" excludeAll( ExclusionRule(organization = "asm"))
 
 libraryDependencies += 
-  "org.apache.spark" %% "spark-streaming" % "0.9.0-incubating-SNAPSHOT" excludeAll( ExclusionRule(organization = "asm"))
+  "org.apache.spark" %% "spark-streaming" % "0.9.0-incubating-SNAPSHOT" excludeAll( ExclusionRule(organization = "asm"), ExclusionRule(name = "slf4j-simple"))
 
 libraryDependencies += 
   "edu.berkeley.cs.amplab" %% "shark" % "0.9.0-SNAPSHOT" excludeAll( ExclusionRule(organization = "asm"))
