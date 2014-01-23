@@ -2,10 +2,10 @@ package thunderainproject.thunderain.example.cloudstone.output
 
 import thunderainproject.thunderain.framework.output.{AbstractEventOutput,PrimitiveObjInspectorFactory}
 
-import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd.{UnionRDD, RDD}
 import org.apache.spark.Logging
 import org.apache.spark.Accumulable
-import org.apache.spark.streaming.DStream
+import org.apache.spark.streaming.dstream.DStream
 
 
 import org.apache.hadoop.hive.serde2.objectinspector.{ObjectInspectorUtils, ObjectInspector, StructField, StructObjectInspector}
@@ -14,7 +14,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectIn
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo
 
 import shark.memstore2.ColumnarStructObjectInspector.IDStructField
-import shark.memstore2.{ColumnarStructObjectInspector, TablePartitionBuilder, TablePartition, TablePartitionStats}
+import shark.memstore2._
 import shark.execution.serialization.JavaSerializer
 import shark.tachyon.TachyonTableWriter
 import shark.{SharkContext, SharkEnvSlave, SharkEnv}
@@ -30,6 +30,8 @@ import java.nio.ByteBuffer
 
 import tachyon.client.WriteType
 import org.apache.hadoop.hive.metastore.MetaStoreUtils
+import scala.Tuple2
+import org.apache.spark.thunderainproject.thunderain.example.cloudstone.output.TachyonRDDOutputListener
 
 object TachyonRDDOutput extends Logging{
   //This function only for performance measurement.
@@ -52,7 +54,6 @@ object TachyonRDDOutput extends Logging{
  *
  */
 class TachyonRDDOutput extends AbstractEventOutput with Logging{
-  initLogging()
 
   var fieldNames: Array[String] = _
 
@@ -117,14 +118,15 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
 
       timeColumnIndex = fieldNames.zipWithIndex.toMap.apply(timestampFieldName)
     }
+    sc.addSparkListener(new TachyonRDDOutputListener(this))
 
     logDebug("obtain the tachyonWrite in preprocessOutput")
     //obtain the tachyonWriter from the shark util
-    tableKey = SharkEnv.makeTachyonTableKey(MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName)
-    tachyonWriter = SharkEnv.tachyonUtil.createTableWriter(tableKey, formats.length + 1)
+    tableKey = MemoryMetadataManager.makeTableKey(MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName)
+    tachyonWriter = SharkEnv.tachyonUtil.createTableWriter(tableKey, None, formats.length + 1)
 
     //no transformation for the input stream here
-      stream
+    stream
   }
 
   override def output(stream: DStream[_]) {
@@ -154,7 +156,7 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
       tblRdd.foreach(_ => Unit)  //to trigger spark job in order to evaluate it immediately
 
       // put rdd and statAccum to cache manager
-      if (tachyonWriter != null && statAccum != null && SharkEnv.tachyonUtil.tableExists(tableKey)) {
+      if (tachyonWriter != null && statAccum != null && SharkEnv.tachyonUtil.tableExists(tableKey, None)) {
         //persist the stats onto tachyon file system, otherwise Shark cannot read those data from tachyon later
         tachyonWriter.updateMetadata(ByteBuffer.wrap(JavaSerializer.serialize(statAccum.value.toMap)))
       }
@@ -307,7 +309,7 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
     // Put the table in Tachyon.
     logDebug("Putting RDD for %s in Tachyon".format(tableKey))
 
-    if(!SharkEnv.tachyonUtil.tableExists(tableKey)) {
+    if(!SharkEnv.tachyonUtil.tableExists(tableKey, None)) {
       tachyonWriter.createTable(ByteBuffer.allocate(0))
     }
 
@@ -324,6 +326,7 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
   }
 
   protected[cloudstone] def writeColumnPartition(partition: TablePartition, partitionIndex: Int) {
+    val swapTable = tableKey + ".swap"
     partition.toTachyon.zipWithIndex.foreach { case(buf, column) =>
       val  f: Future[Unit] = future {
         //write output to tachyon in parallel
@@ -335,13 +338,13 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
 
         val startTime = System.currentTimeMillis()
         //the workaround solution
-        val tablepath = SharkEnvSlave.tachyonUtil.getPath(tableKey)
+
+        val tablepath = SharkEnvSlave.tachyonUtil.warehousePath + "/" + swapTable
         val rawTable = SharkEnvSlave.tachyonUtil.client.getRawTable(tablepath)
         val rawColumn = rawTable.getRawColumn(column)
         var file = rawColumn.getPartition(partitionIndex)
         if(file!=null && SharkEnvSlave.tachyonUtil.client.exist(file.getPath)) {
           //to delete the existing partition file before hand
-          //TODO this solution will cause shark query failure!!!!
           SharkEnvSlave.tachyonUtil.client.delete(file.getPath, true)
         }
         rawColumn.createPartition(partitionIndex)
@@ -362,9 +365,63 @@ class TachyonRDDOutput extends AbstractEventOutput with Logging{
 
   protected[cloudstone] def readFromTachyon(tblName: String): RDD[TablePartition] = {
     if (cachedRDD != null) cachedRDD
-    if(!SharkEnv.tachyonUtil.tableExists(tableKey)) null
-    else {SharkEnv.tachyonUtil.createRDD(tblName)}
+    if(!SharkEnv.tachyonUtil.tableExists(tblName, None)) null
+    //TODO to handle any exception while reading tachyon file as RDD
+    else {
+      new UnionRDD(SharkEnv.sc, SharkEnv.tachyonUtil.createRDD(tblName, None).map(_._1))
+    }
   }
 
+  def rotateArchives(currentTable: String, previousTable: String) {
+    if(SharkEnv.tachyonUtil.tableExists(currentTable, None))
+      SharkEnv.tachyonUtil.dropTable(currentTable, None)
+    SharkEnv.tachyonUtil.renameDirectory(previousTable, currentTable)
+  }
+
+
+  /**
+   * To commit the table.swap to table (table.1... )
+   */
+  def commit(historyNumber: Int, tblName: String) {
+    var currentTable = tblName+".%d".format(historyNumber)
+    var previousTable = ""
+
+    (1 to historyNumber).reverse.foreach(
+     i => {
+       previousTable = tblName+".%d".format(i-1)
+       rotateArchives(currentTable, previousTable)
+       currentTable = previousTable
+     }
+    )
+
+    previousTable = tblName
+    rotateArchives(currentTable, previousTable)
+    currentTable = previousTable
+
+    //commit
+    previousTable = tblName + ".swap"
+    rotateArchives(currentTable, previousTable)
+  }
+
+  /**
+   * To roll back previous table version to rescue failed table data
+   */
+  def Rollback(historyNumber: Int, tblName: String) {
+    var currentTable = tblName+".swap"
+    var previousTable = ""
+
+    if(SharkEnv.tachyonUtil.tableExists(currentTable, None))
+      SharkEnv.tachyonUtil.dropTable(currentTable, None)
+
+    currentTable = tblName
+
+    (0 until 5).foreach(
+      i => {
+        previousTable = tblName+".%d".format(i)
+        rotateArchives(currentTable, previousTable)
+        currentTable = previousTable
+      }
+    )
+  }
 
 }

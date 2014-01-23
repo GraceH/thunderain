@@ -20,15 +20,17 @@ package thunderainproject.thunderain.framework
 
 import org.apache.log4j.{LogManager, PropertyConfigurator}
 
-import org.apache.spark.{SparkContext, SparkEnv}
-import org.apache.spark.streaming.StreamingContext
+import org.apache.spark.streaming._
+import org.apache.spark.streaming.StreamingContext._
 import org.apache.spark.streaming.Seconds
+import org.apache.spark.streaming.kafka._
 
-import shark.{SharkEnv, SharkServer}
-import scala.collection.mutable.HashMap
+import shark.SharkEnv
+import scala.collection.JavaConverters._
 
 
 object Thunderain {
+  var listener: Listener = _
   def main(args: Array[String]) {
     if (args.length < 2) {
       println("Thunderain conf/properties.xml conf/log4j.properties [conf/fairscheduler.xml]")
@@ -91,13 +93,16 @@ object Thunderain {
     // "|||" is a delimiter, category is topic name, message is content
     val kafkaInputs = System.getenv("KAFKA_INPUT_NUM").toInt
     val lines = (1 to kafkaInputs).map(_ =>
-      ssc.kafkaStream(zkQuorum, group, apps.map(e => (e._1, 1))).map(_._2)).toArray
+      KafkaUtils.createStream(ssc, zkQuorum, group, apps.map(e => (e._1,1)).toMap).map(_._2)).toArray
     val union = ssc.union(lines)
 
     val streams = apps.map(e => (e._1, union.filter(s => s.startsWith(e._1))))
     	 .map(e => (e._1, e._2.map(s => s.substring(s.indexOf("|||") + 3))))
 
     streams.foreach(e => apps(e._1).process(e._2))
+
+    // start the listener
+    listener = new Listener(ssc,batchDurationSeconds)
 
     ssc.start()
   }

@@ -3,7 +3,7 @@ package thunderainproject.thunderain.example.cloudstone.output
 import thunderainproject.thunderain.framework.output.AbstractEventOutput
 import thunderainproject.thunderain.framework.Event
 
-import org.apache.spark.streaming.DStream
+import org.apache.spark.streaming.dstream.DStream
 
 import scala.collection.mutable
 import shark.SharkContext

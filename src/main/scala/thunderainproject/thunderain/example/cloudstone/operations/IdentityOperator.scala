@@ -2,9 +2,9 @@ package thunderainproject.thunderain.example.cloudstone.operations
 
 import scala.xml.Node
 
-import org.apache.spark.streaming.DStream
+import org.apache.spark.streaming.dstream.DStream
 
-import thunderainproject.thunderain.framework.Event
+import thunderainproject.thunderain.framework.{JobGroupCancelHandler, Thunderain, Event}
 import thunderainproject.thunderain.framework.operator.{OperatorConfig, AbstractOperator}
 import thunderainproject.thunderain.framework.output.AbstractEventOutput
 
@@ -76,8 +76,16 @@ class IdentityOperator extends AbstractOperator with OperatorConfig {
       .transform(r => r.coalesce(config.partitionNum, true))
 
     val jobs:Array[Thread] = outputClzs.map(clz =>
-      new Thread(new Runnable(){def run = {clz.output(clz.preprocessOutput(resultStream))}}))
+      new Thread(new Runnable(){
+        def run = {
+          //TODO assign a job group for the current thread for future canceling.
+          if(clz.getClass.getSimpleName.equals("TachyonRDDOutput"))
+            stream.context.sparkContext.setJobGroup("TachyonOutputs", "TachyonOutputs for cloudstone jobs")
+          //stream.context.sparkContext.setJobGroup(Thread.currentThread().getId,clz.getClass.getName)
+          clz.output(clz.preprocessOutput(resultStream))}
+      }))
     //outputClzs.map(clz => clz.output(clz.preprocessOutput(resultStream)))
     jobs.map(t => {t.start; t}).foreach(_.join)
+    Thunderain.listener.addHandler(new JobGroupCancelHandler(stream.context.sparkContext, "TachyonOutputs"))
   }
 }

@@ -22,14 +22,14 @@ import java.nio.{ByteBuffer, ByteOrder}
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
-import org.apache.spark.streaming.DStream
+import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.storage.StorageLevel
 
 import scala.collection.mutable
 
 import shark.SharkEnv
 import shark.memstore2.column.ColumnBuilder
-import shark.memstore2.{CacheType, TablePartition, TablePartitionStats}
+import shark.memstore2.{MemoryMetadataManager, CacheType, TablePartition, TablePartitionStats}
 import shark.execution.serialization.JavaSerializer
 
 import thunderainproject.thunderain.framework.output.{AbstractEventOutput, PrimitiveObjInspectorFactory,
@@ -44,7 +44,7 @@ abstract class TachyonRDDOutput extends AbstractEventOutput {
 
   @transient val tachyonClient = TachyonFS.get(tachyonURL)
   @transient lazy val tachyonClientOnSlave = TachyonFS.get(tachyonURL)
-  val tableKey = SharkEnv.makeTachyonTableKey(MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName)
+  val tableKey = MemoryMetadataManager.makeTableKey(MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName)
   lazy val tablePath = tachyonWarehousePath + "/" + tableKey
   @transient lazy val table = tachyonClientOnSlave.getRawTable(tablePath)
   var rawTableId = -1;
@@ -97,7 +97,7 @@ abstract class TachyonRDDOutput extends AbstractEventOutput {
         buildTachyonRdd(r, statAccum)
       } else {
         val rdd = SharkEnv.memoryMetadataManager
-          .getMemoryTable(MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName).map(_.tableRDD) match {
+          .getMemoryTable(MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName).map(_.getRDD.get) match {
           case None => buildTachyonRdd(r, statAccum)
           case Some(s) => zipTachyonRdd(s, r, statAccum)
         }
@@ -120,10 +120,7 @@ abstract class TachyonRDDOutput extends AbstractEventOutput {
         .getMemoryTable(MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName)
         .getOrElse(SharkEnv.memoryMetadataManager.createMemoryTable(
         MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName, CacheType.MEMORY))
-      memoryTable.tableRDD = tblRdd
-      SharkEnv.memoryMetadataManager.putStats(MetaStoreUtils.DEFAULT_DATABASE_NAME, outputName, statAccum.value.toMap)
-      
-      
+      memoryTable.put(tblRdd,statAccum.value.toMap)
     })
     tachyonClientOnSlave.close()
   }
