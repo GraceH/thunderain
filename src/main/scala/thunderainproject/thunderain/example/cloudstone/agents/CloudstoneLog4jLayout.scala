@@ -114,7 +114,7 @@ trait CloudstoneLog4jLayout extends Layout{
 }
 
 class CloudstoneLog4jPatternLayout extends PatternLayout with CloudstoneLog4jLayout
-//class CloudstoneLog4jDateLayout extends org.apache.log4j.helpers.DateLayout with CloudstoneLog4jLayout
+class CloudstoneLog4jTTCCLayout extends org.apache.log4j.TTCCLayout with CloudstoneLog4jLayout
 class CloudstoneLog4jEnhancedPatternLayout extends org.apache.log4j.EnhancedPatternLayout with CloudstoneLog4jLayout
 class CloudstoneLog4jSimpleLayout extends org.apache.log4j.SimpleLayout with CloudstoneLog4jLayout
 class CloudstoneLog4jXMLLayout extends org.apache.log4j.xml.XMLLayout with CloudstoneLog4jLayout
